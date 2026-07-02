@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A stored analysis snapshot. Powers shareable result pages and
+/// short-term caching (identical requests within the cache window
+/// return the stored snapshot instead of re-hitting OpenDota).
+model Analysis {
+  id          String   @id @default(cuid())
+  shareId     String   @unique
+  accountId   BigInt
+  personaName String?
+  avatarUrl   String?
+  currentMmr  Int
+  result      Json
+  createdAt   DateTime @default(now())
+
+  @@index([accountId, currentMmr, createdAt])
+}
+
+/// Generic upstream-response cache (hero constants, etc.).
+model ApiCache {
+  key       String   @id
+  value     Json
+  expiresAt DateTime
+}

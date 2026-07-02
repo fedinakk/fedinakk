@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 20 14% 4%;
+    --foreground: 30 25% 92%;
+    --card: 20 12% 6%;
+    --card-foreground: 30 25% 92%;
+    --popover: 20 12% 6%;
+    --popover-foreground: 30 25% 92%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 20 14% 4%;
+    --secondary: 20 10% 12%;
+    --secondary-foreground: 30 25% 92%;
+    --muted: 20 8% 13%;
+    --muted-foreground: 27 12% 62%;
+    --accent: 20 10% 14%;
+    --accent-foreground: 30 25% 92%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 30 25% 96%;
+    --border: 24 16% 15%;
+    --input: 24 16% 15%;
+    --ring: 24 95% 53%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(1100px 520px at 85% -8%, rgba(234, 88, 12, 0.13), transparent 60%),
+      radial-gradient(900px 480px at 0% 8%, rgba(220, 38, 38, 0.09), transparent 55%),
+      radial-gradient(1200px 800px at 50% 115%, rgba(120, 35, 8, 0.12), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    @apply bg-ember-600/60 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 8px;
+    border: 2px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(24 30% 25%);
+  }
+}
+
+@layer components {
+  /* Frosted glass panel */
+  .glass {
+    @apply border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl;
+  }
+
+  .glass-strong {
+    @apply border border-white/10 bg-white/[0.05] backdrop-blur-2xl;
+  }
+
+  /* Gradient headline text */
+  .text-gradient-ember {
+    @apply bg-gradient-to-r from-amber-300 via-orange-500 to-red-600 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-subtle {
+    @apply bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent;
+  }
+
+  /* Animated headline gradient */
+  .text-gradient-animated {
+    background: linear-gradient(90deg, #fcd34d, #f97316, #dc2626, #f97316, #fcd34d);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-x 8s ease infinite;
+  }
+
+  /* Faint blueprint grid behind hero sections */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+  }
+
+  /* Shimmering skeleton for loading states */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.04) 40%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.04) 60%
+    );
+    background-size: 700px 100%;
+    animation: shimmer 2.4s linear infinite;
+  }
+}
