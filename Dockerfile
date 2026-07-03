@@ -20,6 +20,9 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Docker bridge networks often advertise IPv6 without routing it, which makes
+# Node's fetch hang/fail on hosts with AAAA records (like api.opendota.com).
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules

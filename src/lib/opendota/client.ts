@@ -33,6 +33,20 @@ const MATCH_PROJECTIONS = [
   "is_roaming",
 ];
 
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [500, 1500];
+
+/** Unwrap undici's "fetch failed" wrapper so logs show the real cause (ENOTFOUND, ETIMEDOUT…). */
+export function describeNetworkError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause;
+    const causeText =
+      cause instanceof Error ? ` (причина: ${cause.message})` : cause ? ` (причина: ${String(cause)})` : "";
+    return `${error.name}: ${error.message}${causeText}`;
+  }
+  return String(error);
+}
+
 async function openDota<T>(path: string, params: Record<string, string | string[]> = {}): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
   for (const [key, value] of Object.entries(params)) {
@@ -43,26 +57,42 @@ async function openDota<T>(path: string, params: Record<string, string | string[
     url.searchParams.set("api_key", process.env.OPENDOTA_API_KEY);
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-  } catch (error) {
-    console.error(`[mmr-oracle] OpenDota request failed: ${path}`, error);
-    throw new AppError("UPSTREAM_ERROR");
+  // Transient network failures and 5xx responses are retried with backoff;
+  // 404/429 are semantic answers and surface immediately.
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 2]));
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+    } catch (error) {
+      console.error(
+        `[mmr-oracle] OpenDota network failure (${attempt}/${MAX_ATTEMPTS}) ${path}: ${describeNetworkError(error)}`,
+      );
+      continue;
+    }
+
+    if (res.status === 429) throw new AppError("UPSTREAM_RATE_LIMITED");
+    if (res.status === 404) throw new AppError("ACCOUNT_NOT_FOUND");
+    if (res.status >= 500) {
+      console.error(`[mmr-oracle] OpenDota ${path} responded ${res.status} (${attempt}/${MAX_ATTEMPTS})`);
+      continue;
+    }
+    if (!res.ok) {
+      console.error(`[mmr-oracle] OpenDota ${path} responded ${res.status}`);
+      throw new AppError("UPSTREAM_ERROR");
+    }
+
+    return (await res.json()) as T;
   }
 
-  if (res.status === 429) throw new AppError("UPSTREAM_RATE_LIMITED");
-  if (res.status === 404) throw new AppError("ACCOUNT_NOT_FOUND");
-  if (!res.ok) {
-    console.error(`[mmr-oracle] OpenDota ${path} responded ${res.status}`);
-    throw new AppError("UPSTREAM_ERROR");
-  }
-
-  return (await res.json()) as T;
+  throw new AppError("UPSTREAM_ERROR");
 }
 
 export async function fetchPlayer(accountId: number): Promise<OpenDotaPlayer> {
