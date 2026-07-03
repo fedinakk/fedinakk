@@ -3,7 +3,7 @@ import { Flame } from "lucide-react";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.05] bg-background/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="group flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-b from-ember-500 to-red-700 shadow-glow-sm transition-shadow group-hover:shadow-glow">
@@ -35,6 +35,7 @@ export function Navbar() {
           </Link>
         </nav>
       </div>
+      <div aria-hidden className="teamline h-px w-full" />
     </header>
   );
 }

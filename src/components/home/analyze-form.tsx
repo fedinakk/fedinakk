@@ -102,7 +102,7 @@ export function AnalyzeForm() {
     <div className="w-full max-w-2xl">
       <form
         onSubmit={handleSubmit}
-        className="glass-strong relative rounded-2xl p-5 shadow-glow-sm sm:p-6"
+        className="glass-strong clip-corner corner-brackets relative rounded-sm p-5 drop-shadow-[0_0_28px_rgba(249,115,22,0.12)] sm:p-6"
       >
         <div className="flex flex-col gap-3">
           <div className="relative">
@@ -132,7 +132,7 @@ export function AnalyzeForm() {
                 aria-label="Текущий MMR"
               />
             </div>
-            <Button type="submit" size="lg" disabled={loading} className="sm:w-44">
+            <Button type="submit" size="lg" disabled={loading} className="sm:w-56">
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" /> Анализ…

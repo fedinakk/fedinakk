@@ -16,6 +16,8 @@ export interface PlayerSummary {
 export interface RoleAnalysis {
   role: RoleKey;
   games: number;
+  /** Games pulled from *older* history (beyond the 200-match window) to reach 20. */
+  backfilledGames: number;
   wins: number;
   /** Raw winrate, 0..1 */
   winrate: number;

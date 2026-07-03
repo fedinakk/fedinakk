@@ -66,6 +66,19 @@ const config: Config = {
           400: "#fbbf24",
           500: "#f59e0b",
         },
+        // Team-side accents (Radiant green / Dire red)
+        radiant: {
+          300: "#a8e063",
+          400: "#8bd44a",
+          500: "#6fbf3a",
+          600: "#57a52c",
+        },
+        dire: {
+          300: "#ff8a7a",
+          400: "#f9695a",
+          500: "#e84c3d",
+          600: "#c93a2c",
+        },
         // Validated categorical chart palette (dark surface) — fixed slot order
         chart: {
           1: "#ea580c",

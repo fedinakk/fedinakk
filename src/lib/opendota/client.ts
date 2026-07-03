@@ -99,15 +99,26 @@ export async function fetchPlayer(accountId: number): Promise<OpenDotaPlayer> {
   return openDota<OpenDotaPlayer>(`/players/${accountId}`);
 }
 
-/** Last 200 ranked matches, newest first, with all projected stats. */
-export async function fetchRankedMatches(accountId: number): Promise<OpenDotaPlayerMatch[]> {
-  const matches = await openDota<OpenDotaPlayerMatch[]>(`/players/${accountId}/matches`, {
+/**
+ * A page of ranked matches, newest first, with all projected stats.
+ * `offset` skips the N most recent matches — used to backfill roles that
+ * have too few games inside the main 200-match window.
+ */
+export async function fetchRankedMatches(
+  accountId: number,
+  offset = 0,
+): Promise<OpenDotaPlayerMatch[]> {
+  const params: Record<string, string | string[]> = {
     limit: String(MATCH_LIMIT),
     lobby_type: String(RANKED_LOBBY),
     project: MATCH_PROJECTIONS,
-  });
+  };
+  if (offset > 0) params.offset = String(offset);
+  const matches = await openDota<OpenDotaPlayerMatch[]>(`/players/${accountId}/matches`, params);
   return matches.sort((a, b) => b.start_time - a.start_time);
 }
+
+export { MATCH_LIMIT };
 
 /** Cheap probe used to distinguish "private profile" from "no ranked games". */
 export async function hasAnyMatches(accountId: number): Promise<boolean> {

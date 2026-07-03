@@ -70,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="flex-1">{children}</main>
           <Footer />
         </div>
+        <div aria-hidden className="vignette pointer-events-none fixed inset-0 z-40" />
       </body>
     </html>
   );

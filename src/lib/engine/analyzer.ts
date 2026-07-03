@@ -9,6 +9,7 @@ import type { HeroMap, OpenDotaPlayerMatch } from "@/lib/opendota/types";
 import { accountIdToSteam64 } from "@/lib/steam";
 import { clamp, mean, round, roundMmr } from "@/lib/utils";
 import {
+  MAX_HISTORY_DEPTH,
   MIN_MATCH_DURATION_SEC,
   MIN_ROLE_GAMES,
   MMR_MAX,
@@ -24,6 +25,7 @@ import {
   consistencyAdjustment,
   impactAdjustment,
   recencyWeight,
+  roleRecencyWeight,
   shrunkWinrate,
   winrateToMmrDelta,
 } from "./mmr";
@@ -47,6 +49,8 @@ export interface EnrichedMatch {
   impact: number;
   weight: number;
   parsed: boolean;
+  /** true when pulled from beyond the 200-match window (role backfill). */
+  backfilled: boolean;
 }
 
 export async function analyzeAccount(accountId: number, currentMmr: number): Promise<AnalysisResult> {
@@ -69,7 +73,7 @@ export async function analyzeAccount(accountId: number, currentMmr: number): Pro
   }
 
   // ---- enrich (newest first) ---------------------------------------------
-  const enriched: EnrichedMatch[] = matches.map((match, index) => {
+  const enrich = (match: OpenDotaPlayerMatch, index: number, backfilled: boolean): EnrichedMatch => {
     const hero = heroMap[match.hero_id];
     const role = inferPosition(match, hero);
     const won = match.player_slot < 128 === match.radiant_win;
@@ -81,8 +85,37 @@ export async function analyzeAccount(accountId: number, currentMmr: number): Pro
       impact: matchImpact(match, role),
       weight: recencyWeight(index),
       parsed: match.version != null,
+      backfilled,
     };
-  });
+  };
+
+  const enriched: EnrichedMatch[] = matches.map((match, index) => enrich(match, index, false));
+
+  // ---- role backfill --------------------------------------------------------
+  // Roles with fewer than MIN_ROLE_GAMES inside the 200-match window are
+  // topped up from older history (page by page, capped) so their stats can
+  // still be shown. Backfilled games feed ONLY the per-role analysis — the
+  // overall potential, trends, heroes and match insights stay on the window.
+  const backfillByRole = new Map<RoleKey, EnrichedMatch[]>();
+  const roleCount = (key: RoleKey) =>
+    enriched.filter((m) => m.role === key).length + (backfillByRole.get(key)?.length ?? 0);
+
+  if (rawMatches.length >= 200) {
+    let offset = 200;
+    while (offset < MAX_HISTORY_DEPTH && ROLE_ORDER.some((r) => roleCount(r) < MIN_ROLE_GAMES)) {
+      const page = await fetchRankedMatches(accountId, offset);
+      const usable = page.filter((m) => m.hero_id > 0 && m.duration >= MIN_MATCH_DURATION_SEC);
+      for (const [i, match] of usable.entries()) {
+        const em = enrich(match, offset + i, true);
+        if (roleCount(em.role) >= MIN_ROLE_GAMES) continue;
+        const list = backfillByRole.get(em.role) ?? [];
+        list.push(em);
+        backfillByRole.set(em.role, list);
+      }
+      if (page.length < 200) break; // end of match history
+      offset += 200;
+    }
+  }
 
   // ---- overall -------------------------------------------------------------
   const totalGames = enriched.length;
@@ -108,8 +141,13 @@ export async function analyzeAccount(accountId: number, currentMmr: number): Pro
   );
 
   // ---- roles ---------------------------------------------------------------
+  // Window games first (newest first), then backfilled older games.
   const roles = ROLE_ORDER.map((key) =>
-    analyzeRole(key, enriched.filter((m) => m.role === key), currentMmr),
+    analyzeRole(
+      key,
+      [...enriched.filter((m) => m.role === key), ...(backfillByRole.get(key) ?? [])],
+      currentMmr,
+    ),
   );
 
   const sufficient = roles.filter((r) => !r.insufficientData && r.potentialMmr != null);
@@ -175,6 +213,7 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
     return {
       role: key,
       games: 0,
+      backfilledGames: 0,
       wins: 0,
       winrate: 0,
       weightedWinrate: 0.5,
@@ -194,11 +233,15 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
     };
   }
 
+  const backfilledGames = list.filter((m) => m.backfilled).length;
   const wins = list.filter((m) => m.won).length;
   const winrate = wins / games;
 
-  const weightSum = list.reduce((a, m) => a + m.weight, 0);
-  const weightedWins = list.reduce((a, m) => a + (m.won ? m.weight : 0), 0);
+  // Recency is measured in games ON THIS ROLE (list is newest first), so
+  // backfilled older games still carry real weight in the estimate.
+  const weights = list.map((_, i) => roleRecencyWeight(i));
+  const weightSum = weights.reduce((a, w) => a + w, 0);
+  const weightedWins = list.reduce((a, m, i) => a + (m.won ? weights[i]! : 0), 0);
   const weightedWinrate = shrunkWinrate(weightedWins, weightSum, SHRINK_ROLE);
 
   const kills = list.reduce((a, m) => a + (m.match.kills ?? 0), 0);
@@ -207,7 +250,7 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
   const minutes = list.map((m) => Math.max(1, m.match.duration / 60));
 
   const impacts = list.map((m) => m.impact);
-  const impactScore = list.reduce((a, m) => a + m.impact * m.weight, 0) / weightSum;
+  const impactScore = list.reduce((a, m, i) => a + m.impact * weights[i]!, 0) / weightSum;
   const consistency = consistencyScore(impacts);
   const parsedShare = list.filter((m) => m.parsed).length / games;
 
@@ -221,11 +264,16 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
     potentialMmr = roundMmr(clamp(currentMmr + delta, MMR_MIN, MMR_MAX));
   }
 
-  const confidence = round(clamp(Math.min(1, games / 60) * 80 + parsedShare * 20, 0, 100));
+  // Older (backfilled) games describe the current level less reliably.
+  const backfilledShare = backfilledGames / games;
+  const confidence = round(
+    clamp(Math.min(1, games / 60) * 80 + parsedShare * 20, 0, 100) * (1 - 0.15 * backfilledShare),
+  );
 
   return {
     role: key,
     games,
+    backfilledGames,
     wins,
     winrate: round(winrate, 4),
     weightedWinrate: round(weightedWinrate, 4),
@@ -368,7 +416,9 @@ function computePlayerScore(
   const wrComponent = clamp((weightedWinrate - 0.4) / 0.3, 0, 1);
   const impactComponent = clamp(overallImpact / 100, 0, 1);
   const consistencyComponent = clamp(overallConsistency / 100, 0, 1);
-  const versatility = roles.filter((r) => r.games >= 10).length / 5;
+  // Versatility counts only games inside the current window — backfilled
+  // history says nothing about what the player queues today.
+  const versatility = roles.filter((r) => r.games - r.backfilledGames >= 10).length / 5;
 
   return round(
     (wrComponent * 0.4 + impactComponent * 0.3 + consistencyComponent * 0.15 + versatility * 0.15) * 100,

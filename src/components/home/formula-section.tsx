@@ -5,10 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const anchors = [
   { wr: "50%", delta: "база", note: "точка равновесия" },
-  { wr: "55%", delta: "+300", note: "первый буст самый дорогой" },
-  { wr: "60%", delta: "+550", note: "рост замедляется" },
-  { wr: "65%", delta: "+700", note: "каждый % даёт меньше" },
-  { wr: "70%", delta: "+800", note: "кривая выходит на плато" },
+  { wr: "55%", delta: "+370", note: "первый буст самый дорогой" },
+  { wr: "60%", delta: "+670", note: "рост замедляется" },
+  { wr: "65%", delta: "+875", note: "каждый % даёт меньше" },
+  { wr: "70%", delta: "+1000", note: "кривая выходит на плато" },
 ];
 
 export function FormulaSection() {
@@ -29,7 +29,7 @@ export function FormulaSection() {
             В основе — гиперболический тангенс:
           </p>
           <div className="glass mt-5 overflow-x-auto rounded-xl p-5 font-mono text-sm text-ember-300">
-            Δ MMR = 930 · tanh((WR − 50) / 15)
+            Δ MMR = 1150 · tanh((WR − 50) / 15)
           </div>
           <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
             Кривая симметрична: винрейт ниже 50% опускает потенциал <em>ниже</em> текущего рейтинга.

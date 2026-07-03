@@ -9,6 +9,7 @@ import {
   IMPACT_BASELINE,
   IMPACT_TO_MMR,
   RECENCY_HALF_LIFE,
+  ROLE_RECENCY_HALF_LIFE,
 } from "./constants";
 
 /**
@@ -16,8 +17,8 @@ import {
  *
  *   Δ(wr) = A · tanh((wr·100 − 50) / S)
  *
- * Anchors (A = 930, S = 15): 55% → +300 · 60% → +555 · 65% → +710 ·
- * 70% → +810 · asymptote ±930. Symmetric below 50%, so bad winrates
+ * Anchors (A = 1150, S = 15): 55% → +370 · 60% → +670 · 65% → +875 ·
+ * 70% → +1000 · asymptote ±1150. Symmetric below 50%, so bad winrates
  * produce a *negative* delta and the potential drops below current MMR.
  */
 export function winrateToMmrDelta(winrate: number): number {
@@ -28,6 +29,15 @@ export function winrateToMmrDelta(winrate: number): number {
 /** index 0 = most recent match; weight halves every RECENCY_HALF_LIFE games. */
 export function recencyWeight(index: number): number {
   return Math.pow(0.5, index / RECENCY_HALF_LIFE);
+}
+
+/**
+ * Role-local recency weight: index counts games *on that role* (newest
+ * first), so a role topped up with older matches still gets a meaningful
+ * winrate estimate instead of being drowned by global decay.
+ */
+export function roleRecencyWeight(index: number): number {
+  return Math.pow(0.5, index / ROLE_RECENCY_HALF_LIFE);
 }
 
 /**

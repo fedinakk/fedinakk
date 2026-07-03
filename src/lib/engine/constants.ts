@@ -4,32 +4,44 @@ import type { RoleKey } from "./types";
  * ---- MMR curve -----------------------------------------------------------
  * potentialDelta = CURVE_AMPLITUDE * tanh((winrate% - 50) / CURVE_SCALE)
  *
- * Fitted to the product spec (diminishing returns):
- *   55% → +300 · 60% → +550 · 65% → +700 · 70% → +800
- * tanh(x/15)*930 gives 300 / 555 / 710 / 810 — and is symmetric below 50%,
- * so a losing winrate pulls the potential *below* the current MMR.
+ * Diminishing returns with winrate as the dominant signal:
+ *   55% → +370 · 60% → +670 · 65% → +875 · 70% → +1000 · asymptote ±1150
+ * Symmetric below 50%, so a losing winrate pulls the potential *below*
+ * the current MMR.
  */
-export const CURVE_AMPLITUDE = 930;
+export const CURVE_AMPLITUDE = 1150;
 export const CURVE_SCALE = 15;
 
 /**
  * ---- Recency weighting ---------------------------------------------------
  * Match #0 is the most recent. Weight halves every RECENCY_HALF_LIFE games,
- * so the newest ~80 games dominate the estimate.
+ * so the newest ~80 games dominate the overall estimate. Role analyses use
+ * their own half-life measured in games *on that role*, so backfilled
+ * (older) role games still contribute meaningfully.
  */
 export const RECENCY_HALF_LIFE = 80;
+export const ROLE_RECENCY_HALF_LIFE = 40;
 
 /**
  * ---- Bayesian shrinkage --------------------------------------------------
  * Pseudo-games of 50% winrate blended into every sample: small samples get
  * pulled towards 50%, killing "3 games, 100% winrate" spikes.
  */
-export const SHRINK_OVERALL = 12;
-export const SHRINK_ROLE = 10;
+export const SHRINK_OVERALL = 10;
+export const SHRINK_ROLE = 8;
 export const SHRINK_HERO = 8;
 
 export const MIN_ROLE_GAMES = 20;
 export const MIN_HERO_GAMES = 5;
+
+/**
+ * ---- Role backfill --------------------------------------------------------
+ * The core analysis window is the last 200 ranked matches. If a role has
+ * fewer than MIN_ROLE_GAMES inside that window, older matches are fetched
+ * page by page (up to MAX_HISTORY_DEPTH total) and that role is topped up
+ * to MIN_ROLE_GAMES so its stats can still be shown.
+ */
+export const MAX_HISTORY_DEPTH = 1000;
 
 /** Matches shorter than this are treated as remakes and dropped. */
 export const MIN_MATCH_DURATION_SEC = 600;
@@ -119,8 +131,8 @@ export const ROLES: Record<RoleKey, RoleMeta> = {
 
 /** Performance adjustment: impact points → MMR, and its clamp. */
 export const IMPACT_BASELINE = 52;
-export const IMPACT_TO_MMR = 6;
-export const IMPACT_ADJ_CLAMP = 180;
+export const IMPACT_TO_MMR = 5;
+export const IMPACT_ADJ_CLAMP = 150;
 
 /** Consistency adjustment: consistency points → MMR, and its clamp. */
 export const CONSISTENCY_BASELINE = 55;

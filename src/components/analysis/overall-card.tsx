@@ -17,8 +17,8 @@ export function OverallCard({ result }: { result: AnalysisResult }) {
   const rankLabel = rankTierToLabel(player.rankTier);
 
   return (
-    <Card className="overflow-hidden">
-      <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-ember-500 to-red-600" />
+    <Card className="corner-brackets overflow-hidden">
+      <div className="teamline h-1 w-full" />
       <CardContent className="p-6 sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr_220px]">
           {/* player identity */}

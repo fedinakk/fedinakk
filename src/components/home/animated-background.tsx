@@ -22,14 +22,14 @@ export function AnimatedBackground() {
         />
       </div>
 
-      {/* drifting ember orbs */}
+      {/* drifting ember orbs + Radiant/Dire side glows */}
       <motion.div
         className="absolute left-[12%] top-[22%] h-64 w-64 rounded-full bg-ember-600/20 blur-3xl"
         animate={{ y: [0, -28, 0], x: [0, 14, 0] }}
         transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute right-[10%] top-[36%] h-72 w-72 rounded-full bg-red-700/15 blur-3xl"
+        className="absolute right-[10%] top-[36%] h-72 w-72 rounded-full bg-dire-600/20 blur-3xl"
         animate={{ y: [0, 24, 0], x: [0, -18, 0] }}
         transition={{ duration: 13, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
       />
@@ -37,6 +37,11 @@ export function AnimatedBackground() {
         className="absolute bottom-[-90px] left-[38%] h-80 w-80 rounded-full bg-amber-500/10 blur-3xl"
         animate={{ y: [0, -20, 0] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+      />
+      <motion.div
+        className="absolute bottom-[6%] left-[-60px] h-72 w-72 rounded-full bg-radiant-500/10 blur-3xl"
+        animate={{ y: [0, -18, 0], x: [0, 12, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
       {/* floating sparks */}

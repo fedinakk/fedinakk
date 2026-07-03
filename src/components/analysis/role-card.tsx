@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertCircle, Crown, TrendingDown } from "lucide-react";
+import { AlertCircle, Crown, Eye, Footprints, History, Shield, Sword, TrendingDown, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ROLES } from "@/lib/engine/constants";
@@ -25,9 +25,9 @@ export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
       viewport={{ once: true, margin: "-40px" }}
       transition={{ delay: index * 0.08, duration: 0.5 }}
       className={cn(
-        "glass group relative flex h-full flex-col rounded-xl p-5 transition-all duration-300 hover:-translate-y-0.5",
-        isBest && "border-amber-400/35 shadow-glow-sm",
-        isWorst && "border-red-500/25",
+        "glass clip-corner group relative flex h-full flex-col rounded-sm p-5 transition-all duration-300 hover:-translate-y-0.5",
+        isBest && "border-amber-400/40 bg-gradient-to-b from-amber-400/[0.05] to-transparent",
+        isWorst && "border-dire-500/30",
       )}
     >
       {(isBest || isWorst) && (
@@ -44,7 +44,12 @@ export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
         </div>
       )}
 
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">{meta.label}</p>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ember-600/15 text-ember-400 ring-1 ring-ember-600/25">
+          <RoleIcon role={role.role} />
+        </span>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">{meta.label}</p>
+      </div>
 
       {role.insufficientData ? (
         <div className="mt-4 flex flex-1 flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-white/10 bg-black/20 p-4">
@@ -54,8 +59,8 @@ export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
           </span>
           <p className="text-xs leading-relaxed text-muted-foreground/70">
             {role.games > 0
-              ? `Сыграно ${role.games} ${plural(role.games, "матч", "матча", "матчей")} — для прогноза нужно минимум 20.`
-              : "На этой роли нет матчей в анализируемом окне."}
+              ? `Даже с добором из старой истории набралось лишь ${role.games} ${plural(role.games, "матч", "матча", "матчей")} — для прогноза нужно минимум 20.`
+              : "На этой роли нет матчей даже в глубокой истории аккаунта."}
           </p>
         </div>
       ) : (
@@ -98,10 +103,34 @@ export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
             <MiniBar label="Стабильность" value={role.consistency} />
             <MiniBar label="Достоверность" value={role.confidence} />
           </div>
+
+          {role.backfilledGames > 0 && (
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground/80">
+              <History className="h-3.5 w-3.5 shrink-0 text-ember-500/80" />
+              +{role.backfilledGames} {plural(role.backfilledGames, "игра добрана", "игры добрано", "игр добрано")} из
+              более старой истории — в последних 200 матчах этой роли мало.
+            </p>
+          )}
         </>
       )}
     </motion.div>
   );
+}
+
+function RoleIcon({ role }: { role: RoleAnalysis["role"] }) {
+  const cls = "h-4 w-4";
+  switch (role) {
+    case "pos1":
+      return <Sword className={cls} />;
+    case "pos2":
+      return <Zap className={cls} />;
+    case "pos3":
+      return <Shield className={cls} />;
+    case "pos4":
+      return <Footprints className={cls} />;
+    case "pos5":
+      return <Eye className={cls} />;
+  }
 }
 
 function StatItem({ label, value, highlight, warn }: { label: string; value: string; highlight?: boolean; warn?: boolean }) {

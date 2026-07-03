@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import type { MatchInsights } from "@/lib/engine/types";
 import { plural, round } from "@/lib/utils";
@@ -18,13 +19,13 @@ export function MatchInsightsPanel({ insights }: { insights: MatchInsights }) {
   const winratePct = round((insights.wins / Math.max(1, insights.totalMatches)) * 100, 1);
   const recentPct = round(insights.recentForm.winrate * 100);
 
-  const tiles = [
-    {
-      icon: Swords,
-      label: "Победы — поражения",
-      value: `${insights.wins} — ${insights.losses}`,
-      sub: `винрейт ${winratePct}%`,
-    },
+  const tiles: Array<{
+    icon: LucideIcon;
+    label: string;
+    value: string;
+    sub: string;
+    small?: boolean;
+  }> = [
     {
       icon: TrendingUp,
       label: `Форма (последние ${insights.recentForm.games})`,
@@ -75,14 +76,38 @@ export function MatchInsightsPanel({ insights }: { insights: MatchInsights }) {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {/* W/L tile — Radiant vs Dire split */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.45 }}
+        className="glass clip-corner-sm rounded-sm p-4 transition-colors hover:bg-white/[0.05]"
+      >
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Swords className="h-4 w-4 text-ember-500/90" />
+          <span className="text-[11px] uppercase tracking-wide">Победы — поражения</span>
+        </div>
+        <p className="mt-2 font-display text-2xl font-bold">
+          <span className="text-radiant-400">{insights.wins}</span>
+          <span className="text-muted-foreground/50"> — </span>
+          <span className="text-dire-400">{insights.losses}</span>
+        </p>
+        <div className="mt-2 flex h-1.5 gap-0.5 overflow-hidden rounded-full">
+          <div className="rounded-l-full bg-radiant-500/85" style={{ width: `${winratePct}%` }} />
+          <div className="flex-1 rounded-r-full bg-dire-500/75" />
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground/70">винрейт {winratePct}%</p>
+      </motion.div>
+
       {tiles.map((tile, i) => (
         <motion.div
           key={tile.label}
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
-          transition={{ delay: i * 0.05, duration: 0.45 }}
-          className="glass rounded-xl p-4 transition-colors hover:bg-white/[0.05]"
+          transition={{ delay: (i + 1) * 0.05, duration: 0.45 }}
+          className="glass clip-corner-sm rounded-sm p-4 transition-colors hover:bg-white/[0.05]"
         >
           <div className="flex items-center gap-2 text-muted-foreground">
             <tile.icon className="h-4 w-4 text-ember-500/90" />

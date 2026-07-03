@@ -67,7 +67,7 @@ export function HeroSection() {
           className="mt-14 grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4"
         >
           {STATS.map((stat) => (
-            <div key={stat.label} className="glass rounded-xl px-4 py-4 transition-colors hover:bg-white/[0.05]">
+            <div key={stat.label} className="glass clip-corner-sm rounded-sm px-4 py-4 transition-colors hover:bg-white/[0.05]">
               <dt className="text-xs text-muted-foreground">{stat.label}</dt>
               <dd className="mt-1 font-display text-2xl font-bold text-gradient-ember">{stat.value}</dd>
             </div>

@@ -109,11 +109,11 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
         description="Прогноз MMR для каждой позиции: винрейт с весом свежих игр, импакт относительно нормы роли и модификатор сложности."
       >
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="glass rounded-xl p-5">
+          <div className="glass clip-corner rounded-sm p-5">
             <h3 className="mb-4 text-sm font-medium text-muted-foreground">Потенциальный MMR по ролям</h3>
             <RolePotentialBarChart roles={result.roles} currentMmr={result.currentMmr} />
           </div>
-          <div className="glass rounded-xl p-5">
+          <div className="glass clip-corner rounded-sm p-5">
             <h3 className="mb-4 text-sm font-medium text-muted-foreground">Профиль импакта (0–100)</h3>
             <RoleImpactRadar roles={result.roles} />
           </div>
@@ -147,7 +147,7 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
         accent="формы"
         description="Винрейт и импакт по отрезкам из 20 матчей — от старых к новым."
       >
-        <div className="glass rounded-xl p-5">
+        <div className="glass clip-corner rounded-sm p-5">
           <TrendChart trend={result.trend} />
         </div>
       </Section>
@@ -162,7 +162,7 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
             : "Ожидаемая траектория MMR при стабильной игре. Полоса — оптимистичный и пессимистичный сценарии."
         }
       >
-        <div className="glass rounded-xl p-5">
+        <div className="glass clip-corner rounded-sm p-5">
           <SimulationChart simulation={result.simulation} />
         </div>
       </Section>
