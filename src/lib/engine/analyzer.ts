@@ -238,6 +238,16 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
   const wins = list.filter((m) => m.won).length;
   const winrate = wins / games;
 
+  // Domination is a statement about the CURRENT level, so it only unlocks
+  // when the role has a full sample inside the 200-match window. A role
+  // topped up from older history gets neither the boost nor the penalty.
+  const windowGames = games - backfilledGames;
+  const windowWins = list.filter((m) => !m.backfilled && m.won).length;
+  const domDelta =
+    windowGames >= MIN_ROLE_GAMES
+      ? dominationDelta(windowWins, windowGames, currentMmr, DOM_FULL_SAMPLE_ROLE)
+      : 0;
+
   // Recency staircase measured in games ON THIS ROLE (list is newest
   // first), so backfilled older games still carry real weight.
   const weights = list.map((_, i) => recencyWeight(i));
@@ -257,9 +267,7 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
   let margin: number | null = null;
   if (!insufficientData) {
     const delta =
-      (winrateToMmrDelta(weightedWinrate) +
-        dominationDelta(wins, games, currentMmr, DOM_FULL_SAMPLE_ROLE)) *
-        meta.difficultyMod +
+      (winrateToMmrDelta(weightedWinrate) + domDelta) * meta.difficultyMod +
       impactAdjustment(impactScore) +
       stabilityAdjustment(stability);
     potentialMmr = roundMmr(clamp(currentMmr + delta, MMR_MIN, MMR_MAX));

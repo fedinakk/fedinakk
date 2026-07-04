@@ -7,6 +7,9 @@ import { resolveProfileToAccountId } from "@/lib/steam";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Vercel: analysis with role backfill can take 15-30s — raise the
+// serverless function limit above the default.
+export const maxDuration = 60;
 
 const BodySchema = z.object({
   profile: z.string().trim().min(1).max(300),
