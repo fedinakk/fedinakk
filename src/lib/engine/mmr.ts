@@ -1,15 +1,20 @@
-import { clamp } from "@/lib/utils";
+import { clamp, roundMmr } from "@/lib/utils";
 import {
-  CONSISTENCY_ADJ_CLAMP,
-  CONSISTENCY_BASELINE,
-  CONSISTENCY_TO_MMR,
   CURVE_AMPLITUDE,
   CURVE_SCALE,
+  DECAY_BLOCK_SIZE,
+  DECAY_PER_BLOCK,
   IMPACT_ADJ_CLAMP,
   IMPACT_BASELINE,
   IMPACT_TO_MMR,
-  RECENCY_HALF_LIFE,
-  ROLE_RECENCY_HALF_LIFE,
+  MARGIN_BASE,
+  MARGIN_FULL_SAMPLE,
+  MARGIN_PER_INSTABILITY,
+  MARGIN_SMALL_SAMPLE,
+  RECENT_FULL_WEIGHT_GAMES,
+  STABILITY_ADJ_CLAMP,
+  STABILITY_BASELINE,
+  STABILITY_TO_MMR,
 } from "./constants";
 
 /**
@@ -17,27 +22,26 @@ import {
  *
  *   Δ(wr) = A · tanh((wr·100 − 50) / S)
  *
- * Anchors (A = 1150, S = 15): 55% → +370 · 60% → +670 · 65% → +875 ·
- * 70% → +1000 · asymptote ±1150. Symmetric below 50%, so bad winrates
- * produce a *negative* delta and the potential drops below current MMR.
+ * Anchors (A = 1150, S = 12): 52% → +190 · 55% → +455 · 60% → +785 ·
+ * 65% → +975 · 70% → +1070. The step 52→55% is worth ~+265 MMR while
+ * 62→65% is worth only ~+100 — the higher the winrate, the cheaper each
+ * extra percent. Symmetric below 50%.
  */
 export function winrateToMmrDelta(winrate: number): number {
   const x = winrate * 100 - 50;
   return CURVE_AMPLITUDE * Math.tanh(x / CURVE_SCALE);
 }
 
-/** index 0 = most recent match; weight halves every RECENCY_HALF_LIFE games. */
-export function recencyWeight(index: number): number {
-  return Math.pow(0.5, index / RECENCY_HALF_LIFE);
-}
-
 /**
- * Role-local recency weight: index counts games *on that role* (newest
- * first), so a role topped up with older matches still gets a meaningful
- * winrate estimate instead of being drowned by global decay.
+ * Staircase recency weight. index 0 = most recent game (within whatever
+ * sequence is being analysed — the whole window or one role's games):
+ * the newest 20 games count fully, then every 10 games the weight drops
+ * by ×0.85.
  */
-export function roleRecencyWeight(index: number): number {
-  return Math.pow(0.5, index / ROLE_RECENCY_HALF_LIFE);
+export function recencyWeight(index: number): number {
+  if (index < RECENT_FULL_WEIGHT_GAMES) return 1;
+  const block = Math.floor((index - RECENT_FULL_WEIGHT_GAMES) / DECAY_BLOCK_SIZE) + 1;
+  return Math.pow(DECAY_PER_BLOCK, block);
 }
 
 /**
@@ -54,11 +58,21 @@ export function impactAdjustment(impact: number): number {
   return clamp((impact - IMPACT_BASELINE) * IMPACT_TO_MMR, -IMPACT_ADJ_CLAMP, IMPACT_ADJ_CLAMP);
 }
 
-/** Consistency score (0..100) → MMR adjustment, clamped. */
-export function consistencyAdjustment(consistency: number): number {
+/** Stability score (0..100) → MMR adjustment, clamped. */
+export function stabilityAdjustment(stability: number): number {
   return clamp(
-    (consistency - CONSISTENCY_BASELINE) * CONSISTENCY_TO_MMR,
-    -CONSISTENCY_ADJ_CLAMP,
-    CONSISTENCY_ADJ_CLAMP,
+    (stability - STABILITY_BASELINE) * STABILITY_TO_MMR,
+    -STABILITY_ADJ_CLAMP,
+    STABILITY_ADJ_CLAMP,
   );
+}
+
+/**
+ * ± error margin of an MMR estimate: swingy players (alternating win/loss
+ * streaks) and small samples both widen it. Rounded to 25.
+ */
+export function errorMargin(stability: number, games: number): number {
+  const instability = (100 - clamp(stability, 0, 100)) * MARGIN_PER_INSTABILITY;
+  const smallSample = (1 - Math.min(1, games / MARGIN_FULL_SAMPLE)) * MARGIN_SMALL_SAMPLE;
+  return roundMmr(MARGIN_BASE + instability + smallSample);
 }

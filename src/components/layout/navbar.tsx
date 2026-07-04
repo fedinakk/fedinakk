@@ -14,26 +14,12 @@ export function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 text-sm">
-          <Link
-            href="/#analyze"
-            className="rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
-          >
-            Анализ
-          </Link>
-          <Link
-            href="/#how-it-works"
-            className="hidden rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground sm:block"
-          >
-            Как это работает
-          </Link>
-          <Link
-            href="/#formula"
-            className="hidden rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground md:block"
-          >
-            Формула
-          </Link>
-        </nav>
+        <Link
+          href="/"
+          className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+        >
+          Новый анализ
+        </Link>
       </div>
       <div aria-hidden className="teamline h-px w-full" />
     </header>

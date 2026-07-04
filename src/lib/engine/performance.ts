@@ -1,5 +1,5 @@
 import type { OpenDotaPlayerMatch } from "@/lib/opendota/types";
-import { clamp, stddev } from "@/lib/utils";
+import { clamp } from "@/lib/utils";
 import { ROLES } from "./constants";
 import type { RoleKey } from "./types";
 
@@ -55,24 +55,52 @@ export function matchImpact(match: OpenDotaPlayerMatch, role: RoleKey): number {
   return clamp(score, 0, 100);
 }
 
-/** Support output proxy (healing + assist tempo), 0..100 where 50 = benchmark. */
-export function supportScore(matches: OpenDotaPlayerMatch[], role: RoleKey): number {
-  if (matches.length === 0) return 0;
-  const b = ROLES[role].benchmarks;
-  const perMatch = matches.map((m) => {
-    const minutes = Math.max(1, m.duration / 60);
-    const value = (m.hero_healing ?? 0) / minutes + ((m.assists ?? 0) / minutes) * 12;
-    return clamp(value / b.supportPerMin, 0, 2) * 50;
-  });
-  return clamp(perMatch.reduce((a, v) => a + v, 0) / perMatch.length, 0, 100);
-}
-
 /**
- * Consistency 0..100: how stable the impact is game-to-game.
- * An impact stddev of ~10 is very steady, ~30+ is coin-flip Dota.
+ * Streak-based stability, 0..100.
+ *
+ * The win/loss sequence (chronological or reverse — symmetric) is split
+ * into maximal runs. Runs of 3+ games count as streaks, weighted by how
+ * far they run past 2 games. Then:
+ *
+ *  - both win- AND loss-streaks present → swings ("качели"): the paired
+ *    part counts double — this is the classic unstable pattern;
+ *  - loss-streaks beyond the paired part → tilt, counts at a lower rate;
+ *  - win-streaks alone → dominance, does not reduce stability;
+ *  - no streaks at all → perfectly stable.
+ *
+ * Calibration: a pure coin-flip 50% player lands near 50; strict
+ * alternation → 100; 10-game alternating win/loss blocks → ~0.
  */
-export function consistencyScore(impacts: number[]): number {
-  if (impacts.length < 3) return 50;
-  const sd = stddev(impacts);
-  return clamp(100 - sd * 2.4, 0, 100);
+export function stabilityFromStreaks(results: boolean[]): number {
+  if (results.length < 10) return 50;
+
+  let winScore = 0;
+  let lossScore = 0;
+  let current: boolean | null = null;
+  let run = 0;
+
+  const flush = () => {
+    if (current === null || run < 3) return;
+    const score = run - 2;
+    if (current) winScore += score;
+    else lossScore += score;
+  };
+
+  for (const won of results) {
+    if (won === current) {
+      run += 1;
+    } else {
+      flush();
+      current = won;
+      run = 1;
+    }
+  }
+  flush();
+
+  const paired = Math.min(winScore, lossScore);
+  const tilt = Math.max(0, lossScore - winScore);
+  const swing = paired * 2.2 + tilt * 0.8;
+  const swingPer100 = (swing / results.length) * 100;
+
+  return clamp(100 - swingPer100 * 1.8, 0, 100);
 }

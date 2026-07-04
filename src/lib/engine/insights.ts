@@ -4,25 +4,33 @@ import type { AnalysisResult } from "./types";
 
 type InsightContext = Omit<AnalysisResult, "insights">;
 
+const DATE_FMT = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+
 /**
  * Template-based natural-language insights (Russian). Deterministic —
  * same analysis always produces the same text.
  */
 export function generateInsights(ctx: InsightContext): string[] {
   const out: string[] = [];
-  const { mmrDelta, potentialMmr } = ctx;
+  const { mmrDelta, potentialMmr, errorMargin } = ctx;
 
   if (mmrDelta > 100) {
     out.push(
-      `Модель оценивает ваш потолок в ${formatNumber(potentialMmr)} MMR — это на ${formatNumber(mmrDelta)} выше текущего рейтинга. Ваш винрейт и импакт говорят, что вы играете ниже своего реального уровня.`,
+      `Модель оценивает ваш потолок в ${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR — это на ${formatNumber(mmrDelta)} выше текущего рейтинга. Ваш винрейт и импакт говорят, что вы играете ниже своего реального уровня.`,
     );
   } else if (mmrDelta < -100) {
     out.push(
-      `Расчётный потолок — ${formatNumber(potentialMmr)} MMR (${formatSigned(mmrDelta)} к текущему). Текущая форма не подтверждает ваш рейтинг: без изменений в игре его будет трудно удержать.`,
+      `Расчётный потолок — ${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR (${formatSigned(mmrDelta)} к текущему). Текущая форма не подтверждает ваш рейтинг: без изменений в игре его будет трудно удержать.`,
     );
   } else {
     out.push(
-      `Вы играете почти вплотную к своему расчётному потолку (${formatNumber(potentialMmr)} MMR). Для дальнейшего роста нужно улучшать саму игру, а не только количество матчей.`,
+      `Вы играете почти вплотную к своему расчётному потолку (${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR). Для дальнейшего роста нужно улучшать саму игру, а не только количество матчей.`,
+    );
+  }
+
+  if (ctx.forecast.targetDate && mmrDelta > 25) {
+    out.push(
+      `При текущем темпе (~${ctx.forecast.gamesPerDay} ${plural(Math.round(ctx.forecast.gamesPerDay), "игра", "игры", "игр")} в день) вы выйдете на потолок примерно через ${ctx.forecast.gamesToTarget} ${plural(ctx.forecast.gamesToTarget, "игру", "игры", "игр")} — к ${DATE_FMT.format(new Date(ctx.forecast.targetDate * 1000))}.`,
     );
   }
 
@@ -51,17 +59,17 @@ export function generateInsights(ctx: InsightContext): string[] {
   const trap = ctx.heroes.overrated[0];
   if (trap && trap.heroId !== topHero?.heroId) {
     out.push(
-      `Осторожно с ${trap.name}: винрейт ${round(trap.winrate * 100, 1)}% выглядит завышенным — ${trap.games < 10 ? "выборка слишком мала" : "реальный импакт в этих играх низкий"}, и модель не считает его надёжным источником MMR.`,
+      `Осторожно с ${trap.name}: винрейт ${round(trap.winrate * 100, 1)}% выглядит завышенным — ${trap.games < 8 ? "выборка слишком мала" : "реальный импакт в этих играх низкий"}, и модель не считает его надёжным источником MMR.`,
     );
   }
 
-  if (ctx.overallConsistency >= 65) {
+  if (ctx.stability >= 65) {
     out.push(
-      "Вы играете стабильно от матча к матчу — это признак того, что ваш винрейт не случайность, и прогноз модели имеет высокую достоверность.",
+      "Вы играете ровно, без затяжных качелей побед и поражений — поэтому погрешность прогноза минимальна.",
     );
-  } else if (ctx.overallConsistency < 45) {
+  } else if (ctx.stability < 45) {
     out.push(
-      "Импакт сильно скачет от игры к игре. Стабильность — самый быстрый способ поднять ваш потолок: меньше рискованных пиков, больше отработанных героев.",
+      "У вас часто чередуются винстрики и лузстрики — такие качели сильно расширяют погрешность прогноза. Научитесь останавливаться после 2–3 поражений подряд, и потолок станет ближе.",
     );
   }
 

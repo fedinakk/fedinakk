@@ -16,14 +16,14 @@ const fadeUp = {
 
 export function HeroSection() {
   return (
-    <section id="analyze" className="relative overflow-hidden pb-24 pt-20 sm:pt-28">
+    <section className="relative flex min-h-[calc(100dvh-4rem)] items-center overflow-hidden py-16">
       <AnimatedBackground />
 
       <div className="container relative flex flex-col items-center text-center">
         <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium text-ember-300">
             <Sparkles className="h-3.5 w-3.5" />
-            Аналитика по последним 200 рейтинговым матчам
+            Последние 200 рейтинговых матчей · все 5 ролей · прогноз с датой
           </span>
         </motion.div>
 
@@ -32,7 +32,7 @@ export function HeroSection() {
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="mt-6 max-w-4xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
+          className="mt-8 max-w-4xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
         >
           <span className="text-gradient-subtle">Узнай свой</span>{" "}
           <span className="text-gradient-animated">настоящий MMR</span>
@@ -43,10 +43,10 @@ export function HeroSection() {
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg"
+          className="mt-6 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg"
         >
-          Вставь ссылку на профиль — движок проанализирует винрейт, импакт и стабильность
-          на каждой роли и рассчитает твой потенциальный рейтинг: общий и по всем пяти позициям.
+          Ссылка на профиль и текущий рейтинг — на выходе потенциальный MMR по каждой роли,
+          лучшие герои и дата, когда ты доберёшься до потолка.
         </motion.p>
 
         <motion.div
@@ -58,29 +58,7 @@ export function HeroSection() {
         >
           <AnalyzeForm />
         </motion.div>
-
-        <motion.dl
-          custom={4}
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          className="mt-14 grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4"
-        >
-          {STATS.map((stat) => (
-            <div key={stat.label} className="glass clip-corner-sm rounded-sm px-4 py-4 transition-colors hover:bg-white/[0.05]">
-              <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-              <dd className="mt-1 font-display text-2xl font-bold text-gradient-ember">{stat.value}</dd>
-            </div>
-          ))}
-        </motion.dl>
       </div>
     </section>
   );
 }
-
-const STATS = [
-  { value: "200", label: "матчей в анализе" },
-  { value: "5", label: "ролей с прогнозом MMR" },
-  { value: "120+", label: "героев в модели" },
-  { value: "~15 c", label: "на полный разбор" },
-];

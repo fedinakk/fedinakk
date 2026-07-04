@@ -16,6 +16,15 @@ export interface AnalysisEnvelope {
   cached: boolean;
 }
 
+/** Stored snapshots from older engine versions are not renderable — recompute. */
+function isCurrentSchema(value: unknown): value is AnalysisResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { schemaVersion?: number }).schemaVersion === 2
+  );
+}
+
 function memoryKey(accountId: number, currentMmr: number): string {
   return `analysis:${accountId}:${currentMmr}`;
 }
@@ -36,10 +45,10 @@ export async function runAnalysis(accountId: number, currentMmr: number): Promis
       orderBy: { createdAt: "desc" },
     }),
   );
-  if (recent) {
+  if (recent && isCurrentSchema(recent.result)) {
     const envelope: AnalysisEnvelope = {
       shareId: recent.shareId,
-      result: recent.result as unknown as AnalysisResult,
+      result: recent.result,
       cached: true,
     };
     cacheSet(key, envelope, MEMORY_TTL_MS);
@@ -73,10 +82,10 @@ export async function runAnalysis(accountId: number, currentMmr: number): Promis
 
 export async function getAnalysisByShareId(shareId: string): Promise<AnalysisEnvelope | null> {
   const row = await safeDb(() => prisma.analysis.findUnique({ where: { shareId } }));
-  if (!row) return null;
+  if (!row || !isCurrentSchema(row.result)) return null;
   return {
     shareId: row.shareId,
-    result: row.result as unknown as AnalysisResult,
+    result: row.result,
     cached: true,
   };
 }

@@ -1,159 +1,159 @@
 "use client";
 
-import * as React from "react";
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
-import { Info } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { AlertTriangle, Flame, TrendingDown, Trophy, type LucideIcon } from "lucide-react";
 import type { HeroAnalysis, HeroBuckets } from "@/lib/engine/types";
-import { cn, formatNumber, round } from "@/lib/utils";
+import { cn, formatNumber, plural, round } from "@/lib/utils";
 
 type BucketKey = "best" | "worst" | "overrated" | "highImpact";
 
-const TABS: Array<{ key: BucketKey; label: string; hint: string }> = [
-  { key: "best", label: "Лучшие", hint: "Стабильно приносят MMR: высокий винрейт, подтверждённый импактом." },
-  { key: "worst", label: "Худшие", hint: "Тянут рейтинг вниз — в ранкеде лучше отложить." },
-  { key: "overrated", label: "Переоценённые", hint: "Красивый винрейт без реального импакта или на слишком малой выборке." },
-  { key: "highImpact", label: "Высокий импакт", hint: "Наибольшее влияние на игру относительно нормы роли." },
+interface PanelDef {
+  key: BucketKey;
+  title: string;
+  hint: string;
+  icon: LucideIcon;
+  iconClass: string;
+  empty: string;
+  /** Right-hand metric for a row. */
+  metric: (h: HeroAnalysis) => { value: string; label: string };
+}
+
+const PANELS: PanelDef[] = [
+  {
+    key: "best",
+    title: "Лучшие герои",
+    hint: "Стабильно приносят рейтинг: плюсовый винрейт, подтверждённый выборкой и импактом.",
+    icon: Trophy,
+    iconClass: "bg-amber-400/15 text-amber-300 ring-amber-400/25",
+    empty: "Нет героев с плюсовым винрейтом на 5+ играх — сыграйте больше матчей на комфортных героях.",
+    metric: (h) => ({ value: formatNumber(h.estimatedMmr), label: "оценка MMR" }),
+  },
+  {
+    key: "worst",
+    title: "Худшие герои",
+    hint: "Минусовый винрейт — в ранкеде этих героев лучше отложить.",
+    icon: TrendingDown,
+    iconClass: "bg-dire-500/15 text-dire-400 ring-dire-500/25",
+    empty: "Нет героев с минусовым винрейтом на 5+ играх — отличный знак.",
+    metric: (h) => ({ value: formatNumber(h.estimatedMmr), label: "оценка MMR" }),
+  },
+  {
+    key: "overrated",
+    title: "Переоценённый винрейт",
+    hint: "Красивый процент побед, который не подтверждается импактом или размером выборки.",
+    icon: AlertTriangle,
+    iconClass: "bg-gold-400/15 text-gold-300 ring-gold-400/25",
+    empty: "Подозрительно завышенных винрейтов не найдено — ваши проценты честные.",
+    metric: (h) => ({ value: `${round(h.performanceScore)} / 100`, label: "импакт" }),
+  },
+  {
+    key: "highImpact",
+    title: "Высокий импакт",
+    hint: "Наибольшее влияние на игру относительно нормы роли — независимо от винрейта.",
+    icon: Flame,
+    iconClass: "bg-ember-600/15 text-ember-400 ring-ember-600/25",
+    empty: "Пока нет героев с импактом заметно выше нормы роли.",
+    metric: (h) => ({ value: `${round(h.performanceScore)} / 100`, label: "импакт" }),
+  },
 ];
 
 export function HeroesPanel({ heroes }: { heroes: HeroBuckets }) {
-  const [active, setActive] = React.useState<BucketKey>("best");
-  const activeTab = TABS.find((t) => t.key === active)!;
-  const list = heroes[active];
-
   return (
-    <Card>
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Категории героев">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              role="tab"
-              aria-selected={active === tab.key}
-              onClick={() => setActive(tab.key)}
+    <div className="grid gap-5 lg:grid-cols-2">
+      {PANELS.map((panel, i) => (
+        <motion.div
+          key={panel.key}
+          initial={{ opacity: 0, y: 22 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ delay: i * 0.08, duration: 0.5 }}
+          className="glass clip-corner flex flex-col rounded-sm p-5"
+        >
+          <div className="flex items-start gap-3">
+            <span
               className={cn(
-                "rounded-full border px-4 py-1.5 text-sm font-medium transition-all",
-                active === tab.key
-                  ? "border-ember-600/50 bg-ember-600/20 text-ember-200 shadow-glow-sm"
-                  : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:text-foreground",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-md ring-1",
+                panel.iconClass,
               )}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <panel.icon className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="font-semibold leading-tight">{panel.title}</h3>
+              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{panel.hint}</p>
+            </div>
+          </div>
 
-        <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          {activeTab.hint}
-        </p>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="mt-4"
-          >
-            {list.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-muted-foreground">
-                В этой категории пока пусто — нужно минимум 5 игр на герое, чтобы он попал в выборку.
+          <div className="mt-4 flex-1">
+            {heroes[panel.key].length === 0 ? (
+              <div className="flex h-full min-h-[96px] items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 p-4 text-center text-xs leading-relaxed text-muted-foreground">
+                {panel.empty}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead>
-                    <tr className="border-b border-white/[0.07] text-left text-xs uppercase tracking-wide text-muted-foreground/70">
-                      <th className="pb-3 pr-4 font-medium">Герой</th>
-                      <th className="pb-3 pr-4 font-medium">Игры</th>
-                      <th className="pb-3 pr-4 font-medium">Винрейт</th>
-                      <th className="pb-3 pr-4 font-medium">KDA</th>
-                      <th className="pb-3 pr-4 font-medium">Перформанс</th>
-                      <th className="pb-3 pr-4 font-medium">Оценка MMR</th>
-                      <th className="pb-3 font-medium">Достоверность</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((hero, i) => (
-                      <HeroRow key={hero.heroId} hero={hero} index={i} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="divide-y divide-white/[0.05]">
+                {heroes[panel.key].map((hero, j) => (
+                  <HeroRow key={hero.heroId} hero={hero} metric={panel.metric(hero)} index={j} />
+                ))}
+              </ul>
             )}
-          </motion.div>
-        </AnimatePresence>
-      </CardContent>
-    </Card>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }
 
-function HeroRow({ hero, index }: { hero: HeroAnalysis; index: number }) {
+function HeroRow({
+  hero,
+  metric,
+  index,
+}: {
+  hero: HeroAnalysis;
+  metric: { value: string; label: string };
+  index: number;
+}) {
   const wrPct = hero.winrate * 100;
   return (
-    <motion.tr
+    <motion.li
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: index * 0.045 }}
-      className="border-b border-white/[0.04] transition-colors last:border-0 hover:bg-white/[0.03]"
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.05 }}
+      className="flex items-center gap-3 py-2.5"
     >
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-3">
-          {hero.imageUrl ? (
-            <Image
-              src={hero.imageUrl}
-              alt={hero.name}
-              width={48}
-              height={27}
-              className="rounded border border-white/10"
-            />
-          ) : (
-            <div className="h-[27px] w-12 rounded border border-white/10 bg-white/[0.05]" />
-          )}
-          <span className="font-medium">{hero.name}</span>
-        </div>
-      </td>
-      <td className="py-3 pr-4 tabular-nums text-muted-foreground">{hero.games}</td>
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "w-12 tabular-nums font-medium",
-              wrPct >= 55 ? "text-emerald-400" : wrPct < 47 ? "text-red-400" : "text-foreground",
-            )}
-          >
-            {round(wrPct, 1)}%
-          </span>
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.06]">
-            <div
-              className={cn(
-                "h-full rounded-full",
-                wrPct >= 50 ? "bg-emerald-500/80" : "bg-red-500/80",
-              )}
-              style={{ width: `${Math.min(100, wrPct)}%` }}
-            />
-          </div>
-        </div>
-      </td>
-      <td className="py-3 pr-4 tabular-nums">{hero.kda.toFixed(2)}</td>
-      <td className="py-3 pr-4 tabular-nums">{round(hero.performanceScore)} / 100</td>
-      <td className="py-3 pr-4 font-medium tabular-nums text-ember-300">
-        {formatNumber(hero.estimatedMmr)}
-      </td>
-      <td className="py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-white/[0.06]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-ember-500 to-ember-600"
-              style={{ width: `${hero.confidence}%` }}
-            />
-          </div>
-          <span className="text-xs tabular-nums text-muted-foreground">{round(hero.confidence)}%</span>
-        </div>
-      </td>
-    </motion.tr>
+      {hero.imageUrl ? (
+        <Image
+          src={hero.imageUrl}
+          alt={hero.name}
+          width={52}
+          height={29}
+          className="shrink-0 rounded border border-white/10"
+        />
+      ) : (
+        <div className="h-[29px] w-[52px] shrink-0 rounded border border-white/10 bg-white/[0.05]" />
+      )}
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{hero.name}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {hero.games} {plural(hero.games, "игра", "игры", "игр")} · KDA {hero.kda.toFixed(1)}
+        </p>
+      </div>
+
+      <span
+        className={cn(
+          "w-14 shrink-0 text-right text-sm font-semibold tabular-nums",
+          wrPct >= 53 ? "text-radiant-400" : wrPct < 47 ? "text-dire-400" : "text-foreground",
+        )}
+      >
+        {round(wrPct, 1)}%
+      </span>
+
+      <div className="w-20 shrink-0 text-right">
+        <p className="text-sm font-semibold tabular-nums text-ember-300">{metric.value}</p>
+        <p className="text-[10px] text-muted-foreground/70">{metric.label}</p>
+      </div>
+    </motion.li>
   );
 }

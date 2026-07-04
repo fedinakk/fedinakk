@@ -1,9 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertCircle, Crown, Eye, Footprints, History, Shield, Sword, TrendingDown, Zap } from "lucide-react";
+import {
+  AlertCircle,
+  Crown,
+  Eye,
+  Footprints,
+  History,
+  Shield,
+  Sword,
+  TrendingDown,
+  Zap,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { ROLES } from "@/lib/engine/constants";
 import type { RoleAnalysis } from "@/lib/engine/types";
 import { cn, formatNumber, formatSigned, plural, round } from "@/lib/utils";
@@ -17,6 +26,7 @@ interface RoleCardProps {
 
 export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
   const meta = ROLES[role.role];
+  const wrPct = role.winrate * 100;
 
   return (
     <motion.div
@@ -65,50 +75,93 @@ export function RoleCard({ role, isBest, isWorst, index }: RoleCardProps) {
         </div>
       ) : (
         <>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-display text-3xl font-bold text-gradient-ember">
+          {/* potential */}
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-display text-4xl font-bold text-gradient-ember">
               {formatNumber(role.potentialMmr!)}
             </span>
+            {role.errorMargin != null && (
+              <span className="text-sm font-medium text-muted-foreground">
+                ±{formatNumber(role.errorMargin)}
+              </span>
+            )}
             <span
               className={cn(
-                "text-sm font-semibold",
-                role.mmrDelta! >= 0 ? "text-emerald-400" : "text-red-400",
+                "ml-auto text-sm font-semibold",
+                role.mmrDelta! >= 0 ? "text-radiant-400" : "text-dire-400",
               )}
             >
               {formatSigned(role.mmrDelta!)}
             </span>
           </div>
 
-          <dl className="mt-4 grid grid-cols-3 gap-x-3 gap-y-2.5 text-sm">
-            <StatItem label="Винрейт" value={`${round(role.winrate * 100, 1)}%`} highlight={role.winrate >= 0.55} warn={role.winrate < 0.47} />
-            <StatItem label="Матчей" value={String(role.games)} />
-            <StatItem label="KDA" value={role.kda.toFixed(2)} />
-            <StatItem label="GPM" value={formatNumber(role.gpm)} />
-            <StatItem label="XPM" value={formatNumber(role.xpm)} />
-            <StatItem label="Смертей" value={role.deathsPerGame.toFixed(1)} />
-            <StatItem label="Урон/мин" value={formatNumber(role.heroDamagePerMin)} />
-            <StatItem label="Башни/мин" value={formatNumber(role.towerDamagePerMin)} />
-            <StatItem
-              label={role.role === "pos4" || role.role === "pos5" ? "Саппорт" : "Импакт"}
-              value={
-                role.role === "pos4" || role.role === "pos5"
-                  ? String(round(role.supportScore))
-                  : String(round(role.impactScore))
-              }
-            />
-          </dl>
+          {/* winrate + games */}
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Винрейт</p>
+              <p
+                className={cn(
+                  "font-display text-2xl font-bold",
+                  wrPct >= 53 ? "text-radiant-400" : wrPct < 47 ? "text-dire-400" : "text-foreground",
+                )}
+              >
+                {round(wrPct, 1)}%
+              </p>
+              <div className="mt-1.5 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className={cn("rounded-full", wrPct >= 50 ? "bg-radiant-500/85" : "bg-dire-500/80")}
+                  style={{ width: `${Math.min(100, wrPct)}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Матчей</p>
+              <p className="font-display text-2xl font-bold">{role.games}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                {role.wins} {plural(role.wins, "победа", "победы", "побед")}
+              </p>
+            </div>
+          </div>
 
-          <div className="mt-4 space-y-2.5 border-t border-white/[0.06] pt-4">
-            <MiniBar label="Импакт" value={role.impactScore} />
-            <MiniBar label="Стабильность" value={role.consistency} />
-            <MiniBar label="Достоверность" value={role.confidence} />
+          {/* K / D / A */}
+          <div className="mt-5 rounded-lg border border-white/[0.06] bg-black/20 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+              Средние убийства / смерти / помощь
+            </p>
+            <p className="mt-1 font-display text-xl font-bold tabular-nums">
+              <span className="text-amber-300">{role.avgKills.toFixed(1)}</span>
+              <span className="text-muted-foreground/50"> / </span>
+              <span className="text-dire-400">{role.avgDeaths.toFixed(1)}</span>
+              <span className="text-muted-foreground/50"> / </span>
+              <span className="text-radiant-400">{role.avgAssists.toFixed(1)}</span>
+              <span className="ml-3 align-middle text-xs font-medium text-muted-foreground">
+                KDA {role.kda.toFixed(2)}
+              </span>
+            </p>
+          </div>
+
+          {/* impact */}
+          <div className="mt-4 flex items-center gap-3">
+            <span className="w-16 shrink-0 text-xs text-muted-foreground">Импакт</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: `${role.impactScore}%` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full bg-gradient-to-r from-ember-500 to-ember-600"
+              />
+            </div>
+            <span className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums">
+              {round(role.impactScore)}
+            </span>
           </div>
 
           {role.backfilledGames > 0 && (
             <p className="mt-3 flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground/80">
               <History className="h-3.5 w-3.5 shrink-0 text-ember-500/80" />
-              +{role.backfilledGames} {plural(role.backfilledGames, "игра добрана", "игры добрано", "игр добрано")} из
-              более старой истории — в последних 200 матчах этой роли мало.
+              +{role.backfilledGames} {plural(role.backfilledGames, "игра", "игры", "игр")} из более
+              старой истории — в последних 200 матчах этой роли мало.
             </p>
           )}
         </>
@@ -131,25 +184,4 @@ function RoleIcon({ role }: { role: RoleAnalysis["role"] }) {
     case "pos5":
       return <Eye className={cls} />;
   }
-}
-
-function StatItem({ label, value, highlight, warn }: { label: string; value: string; highlight?: boolean; warn?: boolean }) {
-  return (
-    <div>
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground/70">{label}</dt>
-      <dd className={cn("font-medium tabular-nums", highlight && "text-emerald-400", warn && "text-red-400")}>
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function MiniBar({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 text-xs text-muted-foreground">{label}</span>
-      <Progress value={value} className="h-1.5" />
-      <span className="w-8 shrink-0 text-right text-xs font-medium tabular-nums">{round(value)}</span>
-    </div>
-  );
 }

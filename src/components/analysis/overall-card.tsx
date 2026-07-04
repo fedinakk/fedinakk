@@ -2,18 +2,18 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROLES } from "@/lib/engine/constants";
 import type { AnalysisResult } from "@/lib/engine/types";
 import { rankTierToLabel } from "@/lib/ranks";
-import { formatSigned, round } from "@/lib/utils";
+import { formatNumber, formatSigned, round } from "@/lib/utils";
 import { AnimatedCounter } from "./animated-counter";
 import { RankMedal } from "./rank-medal";
 
 export function OverallCard({ result }: { result: AnalysisResult }) {
-  const { player, currentMmr, potentialMmr, mmrDelta } = result;
+  const { player, currentMmr, potentialMmr, mmrDelta, errorMargin } = result;
   const rankLabel = rankTierToLabel(player.rankTier);
 
   return (
@@ -39,22 +39,16 @@ export function OverallCard({ result }: { result: AnalysisResult }) {
             <div>
               <h1 className="text-xl font-bold leading-tight">{player.personaName}</h1>
               {rankLabel && <p className="mt-0.5 text-sm text-muted-foreground">{rankLabel}</p>}
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                {[
-                  { href: player.dotabuffUrl, label: "Dotabuff" },
-                  { href: player.opendotaUrl, label: "OpenDota" },
-                  { href: player.steamProfileUrl, label: "Steam" },
-                ].map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-ember-400"
-                  >
-                    {link.label} <ExternalLink className="h-3 w-3" />
-                  </a>
-                ))}
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <a
+                  href={player.opendotaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-ember-400"
+                >
+                  OpenDota <ExternalLink className="h-3 w-3" />
+                </a>
+                <span className="text-muted-foreground/60">ID {player.accountId}</span>
               </div>
             </div>
           </div>
@@ -80,8 +74,13 @@ export function OverallCard({ result }: { result: AnalysisResult }) {
 
             <div className="flex flex-col items-center gap-3">
               <p className="text-xs uppercase tracking-widest text-ember-300">Потенциальный MMR</p>
-              <p className="font-display text-5xl font-bold text-gradient-ember sm:text-6xl">
-                <AnimatedCounter value={potentialMmr} duration={1.8} />
+              <p className="font-display text-5xl font-bold sm:text-6xl">
+                <span className="text-gradient-ember">
+                  <AnimatedCounter value={potentialMmr} duration={1.8} />
+                </span>
+                <span className="ml-2 align-middle text-lg font-semibold text-muted-foreground">
+                  ±{formatNumber(errorMargin)}
+                </span>
               </p>
               <RankMedal mmr={potentialMmr} size="sm" />
             </div>
@@ -90,10 +89,9 @@ export function OverallCard({ result }: { result: AnalysisResult }) {
           {/* player score */}
           <div className="flex flex-col items-center justify-center gap-3">
             <PlayerScoreRing score={result.playerScore} />
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-ember-400" />
-              Достоверность {result.overallConfidence}%
-            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              Погрешность прогноза — ±{formatNumber(errorMargin)} MMR
+            </p>
           </div>
         </div>
 
@@ -104,7 +102,7 @@ export function OverallCard({ result }: { result: AnalysisResult }) {
           </Badge>
           <Badge variant="neutral">Винрейт {round(result.overallWinrate * 100, 1)}%</Badge>
           <Badge variant="neutral">Импакт {round(result.overallImpact)} / 100</Badge>
-          <Badge variant="neutral">Стабильность {round(result.overallConsistency)} / 100</Badge>
+          <Badge variant="neutral">Стабильность {round(result.stability)} / 100</Badge>
           {result.bestClimbingRole && (
             <Badge variant="gold">Лучшая роль для подъёма — {ROLES[result.bestClimbingRole].shortLabel}</Badge>
           )}

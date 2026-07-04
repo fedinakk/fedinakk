@@ -4,23 +4,28 @@ import type { RoleKey } from "./types";
  * ---- MMR curve -----------------------------------------------------------
  * potentialDelta = CURVE_AMPLITUDE * tanh((winrate% - 50) / CURVE_SCALE)
  *
- * Diminishing returns with winrate as the dominant signal:
- *   55% → +370 · 60% → +670 · 65% → +875 · 70% → +1000 · asymptote ±1150
+ * Strong early diminishing returns: each extra percent of winrate is worth
+ * less than the previous one, and the effect compounds fast —
+ *   52% → +190 · 55% → +455 · 60% → +785 · 65% → +975 · 70% → +1070
+ *   (52→55 gives +265, while 62→65 gives only ~+100)
  * Symmetric below 50%, so a losing winrate pulls the potential *below*
  * the current MMR.
  */
 export const CURVE_AMPLITUDE = 1150;
-export const CURVE_SCALE = 15;
+export const CURVE_SCALE = 12;
 
 /**
  * ---- Recency weighting ---------------------------------------------------
- * Match #0 is the most recent. Weight halves every RECENCY_HALF_LIFE games,
- * so the newest ~80 games dominate the overall estimate. Role analyses use
- * their own half-life measured in games *on that role*, so backfilled
- * (older) role games still contribute meaningfully.
+ * Match #0 is the most recent. The freshest RECENT_FULL_WEIGHT_GAMES games
+ * count fully; after that every DECAY_BLOCK_SIZE games the weight is
+ * multiplied by DECAY_PER_BLOCK (a staircase, not a smooth curve):
+ *   games 1–20 → ×1.00 · 21–30 → ×0.85 · 31–40 → ×0.72 · 41–50 → ×0.61 …
+ * Role analyses apply the same staircase to the game's index *on that
+ * role*, so backfilled older role games still contribute meaningfully.
  */
-export const RECENCY_HALF_LIFE = 80;
-export const ROLE_RECENCY_HALF_LIFE = 40;
+export const RECENT_FULL_WEIGHT_GAMES = 20;
+export const DECAY_BLOCK_SIZE = 10;
+export const DECAY_PER_BLOCK = 0.85;
 
 /**
  * ---- Bayesian shrinkage --------------------------------------------------
@@ -49,6 +54,19 @@ export const MIN_MATCH_DURATION_SEC = 600;
 export const MMR_MIN = 0;
 export const MMR_MAX = 15000;
 
+/**
+ * ---- Error margin ---------------------------------------------------------
+ * The estimate is reported as potential ± margin. The margin grows with
+ * streak-driven instability (win/loss swings) and with small samples:
+ *   margin = MARGIN_BASE
+ *          + (100 - stability) * MARGIN_PER_INSTABILITY
+ *          + (1 - min(1, games / MARGIN_FULL_SAMPLE)) * MARGIN_SMALL_SAMPLE
+ */
+export const MARGIN_BASE = 50;
+export const MARGIN_PER_INSTABILITY = 3;
+export const MARGIN_SMALL_SAMPLE = 200;
+export const MARGIN_FULL_SAMPLE = 150;
+
 export interface RoleMeta {
   key: RoleKey;
   label: string;
@@ -66,7 +84,7 @@ export interface RoleMeta {
     heroDamagePerMin: number;
     towerDamagePerMin: number;
     deaths: number;
-    supportPerMin: number; // healing + ward-proxy per minute
+    supportPerMin: number; // healing + assist-tempo proxy per minute
   };
   /** Metric weights for the impact score; must sum to 1. */
   weights: {
@@ -134,7 +152,7 @@ export const IMPACT_BASELINE = 52;
 export const IMPACT_TO_MMR = 5;
 export const IMPACT_ADJ_CLAMP = 150;
 
-/** Consistency adjustment: consistency points → MMR, and its clamp. */
-export const CONSISTENCY_BASELINE = 55;
-export const CONSISTENCY_TO_MMR = 1.5;
-export const CONSISTENCY_ADJ_CLAMP = 90;
+/** Stability adjustment: stability points → MMR, and its clamp. */
+export const STABILITY_BASELINE = 55;
+export const STABILITY_TO_MMR = 1.5;
+export const STABILITY_ADJ_CLAMP = 90;

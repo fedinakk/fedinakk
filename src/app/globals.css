@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    --background: 20 14% 4%;
-    --foreground: 30 25% 92%;
-    --card: 20 12% 6%;
-    --card-foreground: 30 25% 92%;
-    --popover: 20 12% 6%;
-    --popover-foreground: 30 25% 92%;
+    --background: 228 14% 5%;
+    --foreground: 222 20% 93%;
+    --card: 228 12% 7%;
+    --card-foreground: 222 20% 93%;
+    --popover: 228 12% 7%;
+    --popover-foreground: 222 20% 93%;
     --primary: 24 95% 53%;
-    --primary-foreground: 20 14% 4%;
-    --secondary: 20 10% 12%;
-    --secondary-foreground: 30 25% 92%;
-    --muted: 20 8% 13%;
-    --muted-foreground: 27 12% 62%;
-    --accent: 20 10% 14%;
-    --accent-foreground: 30 25% 92%;
+    --primary-foreground: 228 14% 5%;
+    --secondary: 228 10% 12%;
+    --secondary-foreground: 222 20% 93%;
+    --muted: 228 8% 13%;
+    --muted-foreground: 225 9% 64%;
+    --accent: 228 10% 14%;
+    --accent-foreground: 222 20% 93%;
     --destructive: 0 72% 46%;
-    --destructive-foreground: 30 25% 96%;
-    --border: 24 16% 15%;
-    --input: 24 16% 15%;
+    --destructive-foreground: 222 20% 96%;
+    --border: 227 12% 15%;
+    --input: 227 12% 15%;
     --ring: 24 95% 53%;
     --radius: 0.75rem;
   }
@@ -37,9 +37,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(1100px 520px at 85% -8%, rgba(234, 88, 12, 0.13), transparent 60%),
-      radial-gradient(900px 480px at 0% 8%, rgba(220, 38, 38, 0.09), transparent 55%),
-      radial-gradient(1200px 800px at 50% 115%, rgba(120, 35, 8, 0.12), transparent 60%);
+      radial-gradient(1000px 480px at 70% -10%, rgba(234, 88, 12, 0.09), transparent 60%),
+      radial-gradient(1100px 700px at 15% 110%, rgba(190, 45, 35, 0.06), transparent 60%);
     background-attachment: fixed;
     min-height: 100dvh;
   }
@@ -156,7 +155,7 @@
 
   /* Cinematic vignette overlay (fixed, non-interactive) */
   .vignette {
-    background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 60%, rgba(0, 0, 0, 0.32) 100%);
   }
 
   /* Radiant → ember → Dire divider (team-sides motif) */

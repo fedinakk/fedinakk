@@ -11,6 +11,10 @@ import type { HeroAnalysis, HeroBuckets } from "./types";
  * is Bayes-shrunk towards 50% AND the resulting MMR delta is scaled by a
  * games-based mastery factor, so a 3-game 100% hero cannot outrank a
  * 40-game 58% hero.
+ *
+ * Buckets are mutually honest: "best" requires a positive winrate,
+ * "worst" a negative one — a hero can never land in "best" just because
+ * the pool is small.
  */
 export function analyzeHeroes(
   enriched: EnrichedMatch[],
@@ -55,7 +59,6 @@ export function analyzeHeroes(
       kda: round(kda, 2),
       performanceScore: round(performance, 1),
       estimatedMmr,
-      confidence: round(Math.min(1, games / 20) * 100),
     });
   }
 
@@ -65,23 +68,29 @@ export function analyzeHeroes(
   const rating = (h: HeroAnalysis) =>
     shrunkWinrate(h.wins, h.games, SHRINK_HERO) * 100 * 0.6 + h.performanceScore * 0.4;
 
-  const best = [...eligible].sort((a, b) => rating(b) - rating(a)).slice(0, 6);
-  const bestIds = new Set(best.map((h) => h.heroId));
+  // Winning heroes only — a 34% hero can never be "best".
+  const best = eligible
+    .filter((h) => h.winrate >= 0.52)
+    .sort((a, b) => rating(b) - rating(a))
+    .slice(0, 5);
 
-  const worst = [...eligible]
-    .filter((h) => !bestIds.has(h.heroId))
+  // Losing heroes only.
+  const worst = eligible
+    .filter((h) => h.winrate <= 0.48)
     .sort((a, b) => rating(a) - rating(b))
-    .slice(0, 6);
+    .slice(0, 5);
 
-  const overrated = [...eligible]
-    .filter((h) => h.winrate >= 0.55 && (h.performanceScore < 48 || h.games < 10))
+  // Pretty winrate that impact or sample size does not back up.
+  const overrated = eligible
+    .filter((h) => h.winrate >= 0.55 && (h.performanceScore < 50 || h.games < 8))
     .sort((a, b) => b.winrate - a.winrate)
-    .slice(0, 6);
+    .slice(0, 5);
 
-  const highImpact = [...eligible]
-    .filter((h) => h.performanceScore >= 58)
+  // Above-benchmark game influence regardless of winrate.
+  const highImpact = eligible
+    .filter((h) => h.performanceScore >= 55)
     .sort((a, b) => b.performanceScore - a.performanceScore)
-    .slice(0, 6);
+    .slice(0, 5);
 
   return { best, worst, overrated, highImpact, all: all.slice(0, 40) };
 }

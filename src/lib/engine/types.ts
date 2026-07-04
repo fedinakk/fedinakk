@@ -6,8 +6,6 @@ export interface PlayerSummary {
   accountId: string;
   personaName: string;
   avatarUrl: string | null;
-  steamProfileUrl: string;
-  dotabuffUrl: string;
   opendotaUrl: string;
   rankTier: number | null;
   leaderboardRank: number | null;
@@ -23,24 +21,20 @@ export interface RoleAnalysis {
   winrate: number;
   /** Recency-weighted + Bayes-shrunk winrate, 0..1 */
   weightedWinrate: number;
+  avgKills: number;
+  avgDeaths: number;
+  avgAssists: number;
   kda: number;
-  gpm: number;
-  xpm: number;
-  heroDamagePerMin: number;
-  towerDamagePerMin: number;
-  deathsPerGame: number;
-  /** Vision/heal/assist proxy, 0..100 */
-  supportScore: number;
-  /** 0..100 */
+  /** 0..100, vs role benchmarks */
   impactScore: number;
-  /** 0..100 */
-  consistency: number;
+  /** 0..100, streak-based */
+  stability: number;
+  /** ± MMR error margin of the role estimate */
+  errorMargin: number | null;
   /** null when games < MIN_ROLE_GAMES */
   potentialMmr: number | null;
   /** potentialMmr - currentMmr */
   mmrDelta: number | null;
-  /** 0..100 */
-  confidence: number;
   insufficientData: boolean;
 }
 
@@ -55,18 +49,6 @@ export interface HeroAnalysis {
   /** 0..100 */
   performanceScore: number;
   estimatedMmr: number;
-  /** 0..100 */
-  confidence: number;
-}
-
-export interface TrendPoint {
-  /** e.g. "1–20" (oldest bucket) … "181–200" (newest) */
-  label: string;
-  games: number;
-  /** 0..100 */
-  winratePct: number;
-  /** 0..100 */
-  impact: number;
 }
 
 export interface SimulationPoint {
@@ -74,6 +56,15 @@ export interface SimulationPoint {
   expected: number;
   optimistic: number;
   pessimistic: number;
+}
+
+export interface Forecast {
+  /** Unix seconds when the potential should be reached at the current pace; null when already there or potential below current. */
+  targetDate: number | null;
+  /** Ranked games per day, derived from the analysis window. */
+  gamesPerDay: number;
+  /** Games needed to converge on the potential. */
+  gamesToTarget: number;
 }
 
 export interface MatchInsights {
@@ -104,27 +95,28 @@ export interface HeroBuckets {
 }
 
 export interface AnalysisResult {
-  schemaVersion: 1;
+  schemaVersion: 2;
   generatedAt: number;
   player: PlayerSummary;
   currentMmr: number;
   potentialMmr: number;
   mmrDelta: number;
+  /** ± MMR error margin of the overall estimate (streak-based stability + sample size). */
+  errorMargin: number;
   /** Composite 0..100 player score. */
   playerScore: number;
-  /** 0..100 */
-  overallConfidence: number;
   overallWinrate: number;
   weightedWinrate: number;
   overallImpact: number;
-  overallConsistency: number;
+  /** 0..100, streak-based: many alternating win/loss streaks → low. */
+  stability: number;
   roles: RoleAnalysis[];
   bestRoles: RoleKey[];
   worstRoles: RoleKey[];
   bestClimbingRole: RoleKey | null;
   heroes: HeroBuckets;
-  trend: TrendPoint[];
   simulation: SimulationPoint[];
+  forecast: Forecast;
   matchInsights: MatchInsights;
   /** Generated natural-language insights (Russian). */
   insights: string[];

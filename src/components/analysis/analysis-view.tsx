@@ -2,13 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, SearchX } from "lucide-react";
+import { ArrowLeft, CalendarClock, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ROLES } from "@/lib/engine/constants";
 import type { AnalysisResult } from "@/lib/engine/types";
+import { formatNumber, plural } from "@/lib/utils";
 import { AnalysisSkeleton } from "./analysis-skeleton";
-import { ConfidencePanel } from "./confidence-panel";
 import { HeroesPanel } from "./heroes-panel";
 import { InsightsPanel } from "./insights-panel";
 import { MatchInsightsPanel } from "./match-insights-panel";
@@ -18,7 +17,6 @@ import { RoleImpactRadar, RolePotentialBarChart } from "./role-charts";
 import { Section } from "./section";
 import { ShareButton } from "./share-button";
 import { SimulationChart } from "./simulation-chart";
-import { TrendChart } from "./trend-chart";
 
 type Status = "loading" | "ready" | "missing";
 
@@ -39,9 +37,12 @@ export function AnalysisView({ shareId, initial }: AnalysisViewProps) {
     try {
       const raw = sessionStorage.getItem(`analysis:${shareId}`);
       if (raw) {
-        setResult(JSON.parse(raw) as AnalysisResult);
-        setStatus("ready");
-        return;
+        const parsed = JSON.parse(raw) as AnalysisResult;
+        if (parsed.schemaVersion === 2) {
+          setResult(parsed);
+          setStatus("ready");
+          return;
+        }
       }
     } catch {
       /* ignore storage failures */
@@ -80,9 +81,12 @@ export function AnalysisView({ shareId, initial }: AnalysisViewProps) {
   return <Dashboard shareId={shareId} result={result} />;
 }
 
+const DATE_FMT = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+
 function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResult }) {
   const bestSet = new Set(result.bestRoles);
   const worstSet = new Set(result.worstRoles);
+  const { forecast } = result;
 
   return (
     <div className="container space-y-14 py-10">
@@ -99,10 +103,51 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
       {/* 1. overall potential */}
       <OverallCard result={result} />
 
-      {/* 2. model insights */}
+      {/* 2. forecast — right below the main panel */}
+      <Section
+        title="Прогноз"
+        accent="подъёма"
+        description="Ожидаемая траектория MMR при том же уровне игры. Пунктирные линии — границы погрешности: оптимистичный и пессимистичный сценарии."
+        className="!mt-8"
+      >
+        {forecast.targetDate && result.mmrDelta > 25 && (
+          <div className="mx-auto mb-5 flex max-w-2xl items-center justify-center gap-3 rounded-lg border border-ember-600/25 bg-ember-600/[0.07] px-5 py-3.5 text-sm">
+            <CalendarClock className="h-5 w-5 shrink-0 text-ember-400" />
+            <p className="leading-relaxed">
+              При текущем темпе (~{forecast.gamesPerDay}{" "}
+              {plural(Math.round(forecast.gamesPerDay), "игра", "игры", "игр")} в день) вы выйдете на{" "}
+              <span className="font-semibold text-ember-300">{formatNumber(result.potentialMmr)} MMR</span>{" "}
+              примерно через {forecast.gamesToTarget}{" "}
+              {plural(forecast.gamesToTarget, "игру", "игры", "игр")} —{" "}
+              <span className="font-semibold text-ember-300">
+                к {DATE_FMT.format(new Date(forecast.targetDate * 1000))}
+              </span>
+              .
+            </p>
+          </div>
+        )}
+        {result.mmrDelta <= 25 && (
+          <div className="mx-auto mb-5 flex max-w-2xl items-center justify-center gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-3.5 text-sm text-muted-foreground">
+            <CalendarClock className="h-5 w-5 shrink-0 text-ember-400" />
+            <p className="leading-relaxed">
+              Вы уже играете на уровне своего расчётного потолка — прогноз показывает удержание текущего
+              рейтинга. Чтобы расти дальше, нужно улучшать саму игру.
+            </p>
+          </div>
+        )}
+        <div className="glass clip-corner rounded-sm p-5">
+          <SimulationChart
+            simulation={result.simulation}
+            potentialMmr={result.potentialMmr}
+            errorMargin={result.errorMargin}
+          />
+        </div>
+      </Section>
+
+      {/* 3. model insights */}
       <InsightsPanel insights={result.insights} />
 
-      {/* 3. roles */}
+      {/* 4. roles */}
       <Section
         title="Потенциал по"
         accent="ролям"
@@ -132,7 +177,7 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
         </div>
       </Section>
 
-      {/* 4. heroes */}
+      {/* 5. heroes */}
       <Section
         title="Разбор"
         accent="героев"
@@ -141,44 +186,13 @@ function Dashboard({ shareId, result }: { shareId: string; result: AnalysisResul
         <HeroesPanel heroes={result.heroes} />
       </Section>
 
-      {/* 5. trends */}
-      <Section
-        title="Динамика"
-        accent="формы"
-        description="Винрейт и импакт по отрезкам из 20 матчей — от старых к новым."
-      >
-        <div className="glass clip-corner rounded-sm p-5">
-          <TrendChart trend={result.trend} />
-        </div>
-      </Section>
-
-      {/* 6. simulation */}
-      <Section
-        title="Симуляция"
-        accent="подъёма"
-        description={
-          result.bestClimbingRole
-            ? `Ожидаемая траектория MMR при стабильной игре${result.mmrDelta >= 0 ? " на роли «" + ROLES[result.bestClimbingRole].shortLabel + "»" : ""}: быстрый старт и плато у потолка. Полоса — оптимистичный и пессимистичный сценарии.`
-            : "Ожидаемая траектория MMR при стабильной игре. Полоса — оптимистичный и пессимистичный сценарии."
-        }
-      >
-        <div className="glass clip-corner rounded-sm p-5">
-          <SimulationChart simulation={result.simulation} />
-        </div>
-      </Section>
-
-      {/* 7. match history insights */}
+      {/* 6. match history insights */}
       <Section
         title="История"
         accent="матчей"
         description="Сводка по анализируемому окну из 200 рейтинговых игр."
       >
         <MatchInsightsPanel insights={result.matchInsights} />
-      </Section>
-
-      {/* 8. confidence */}
-      <Section title="Доверие к" accent="прогнозу">
-        <ConfidencePanel result={result} />
       </Section>
 
       {/* CTA */}
