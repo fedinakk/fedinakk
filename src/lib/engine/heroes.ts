@@ -1,8 +1,8 @@
 import { heroImageUrl } from "@/lib/opendota/client";
 import type { HeroMap } from "@/lib/opendota/types";
 import { clamp, round, roundMmr } from "@/lib/utils";
-import { MIN_HERO_GAMES, MMR_MAX, MMR_MIN, SHRINK_HERO } from "./constants";
-import { shrunkWinrate, winrateToMmrDelta } from "./mmr";
+import { DOM_FULL_SAMPLE_HERO, MIN_HERO_GAMES, MMR_MAX, MMR_MIN, SHRINK_HERO } from "./constants";
+import { dominationDelta, shrunkWinrate, winrateToMmrDelta } from "./mmr";
 import type { EnrichedMatch } from "./analyzer";
 import type { HeroAnalysis, HeroBuckets } from "./types";
 
@@ -46,7 +46,14 @@ export function analyzeHeroes(
     const mastery = Math.min(1, games / 15);
     const perfAdj = clamp((performance - 52) * 3, -120, 120);
     const estimatedMmr = roundMmr(
-      clamp(currentMmr + winrateToMmrDelta(shrunk) * mastery + perfAdj, MMR_MIN, MMR_MAX),
+      clamp(
+        currentMmr +
+          winrateToMmrDelta(shrunk) * mastery +
+          dominationDelta(wins, games, currentMmr, DOM_FULL_SAMPLE_HERO) +
+          perfAdj,
+        MMR_MIN,
+        MMR_MAX,
+      ),
     );
 
     all.push({

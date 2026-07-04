@@ -4,6 +4,12 @@ import {
   CURVE_SCALE,
   DECAY_BLOCK_SIZE,
   DECAY_PER_BLOCK,
+  DOM_CENTER,
+  DOM_K,
+  DOM_MAX_BOOST,
+  DOM_MAX_PENALTY,
+  DOM_SHRINK,
+  DOM_SLOPE,
   IMPACT_ADJ_CLAMP,
   IMPACT_BASELINE,
   IMPACT_TO_MMR,
@@ -51,6 +57,41 @@ export function recencyWeight(index: number): number {
 export function shrunkWinrate(weightedWins: number, weightedGames: number, pseudoGames: number): number {
   if (weightedGames <= 0) return 0.5;
   return (weightedWins + pseudoGames * 0.5) / (weightedGames + pseudoGames);
+}
+
+function domSigma(x: number): number {
+  return 1 / (1 + Math.exp(-(x - DOM_CENTER) / DOM_SLOPE));
+}
+
+/**
+ * Domination bonus/penalty for sustained extreme winrates (see constants
+ * for the model). Uses RAW wins/games of the whole sample — recency
+ * weighting is deliberately absent so a hot streak of 20 games cannot
+ * unlock it; only a long, sustained winrate can.
+ *
+ *   ≈0 below 60% · 65% (200 игр) → ~+1800 · 80% (200 игр) → ~+4300
+ *   mirrored below 50% (25% → large negative), capped asymmetrically.
+ */
+export function dominationDelta(
+  wins: number,
+  games: number,
+  currentMmr: number,
+  fullSample: number,
+): number {
+  if (games <= 0) return 0;
+
+  const sustained = (wins + DOM_SHRINK * 0.5) / (games + DOM_SHRINK);
+  const above = sustained >= 0.5;
+  const extremity = above ? sustained : 1 - sustained;
+
+  const d = Math.max(0, domSigma(extremity) - domSigma(0.5));
+  const sampleRamp = Math.min(1, games / fullSample);
+  // Mild rating dependence: on low MMR the ladder distortion is larger in
+  // relative terms but the absolute headroom estimate is more conservative.
+  const headroom = 0.7 + 0.3 * Math.min(1, currentMmr / 6000);
+
+  const magnitude = DOM_K * d * sampleRamp * headroom;
+  return above ? Math.min(magnitude, DOM_MAX_BOOST) : -Math.min(magnitude, DOM_MAX_PENALTY);
 }
 
 /** Impact score (0..100) → MMR adjustment, clamped. */

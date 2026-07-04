@@ -8,6 +8,8 @@ import {
 import type { HeroMap, OpenDotaPlayerMatch } from "@/lib/opendota/types";
 import { clamp, mean, round, roundMmr } from "@/lib/utils";
 import {
+  DOM_FULL_SAMPLE_OVERALL,
+  DOM_FULL_SAMPLE_ROLE,
   MAX_HISTORY_DEPTH,
   MIN_MATCH_DURATION_SEC,
   MIN_ROLE_GAMES,
@@ -21,6 +23,7 @@ import {
 import { analyzeHeroes } from "./heroes";
 import { generateInsights } from "./insights";
 import {
+  dominationDelta,
   errorMargin,
   impactAdjustment,
   recencyWeight,
@@ -137,6 +140,7 @@ export async function analyzeAccount(accountId: number, currentMmr: number): Pro
 
   const overallDelta =
     winrateToMmrDelta(weightedWinrate) +
+    dominationDelta(wins, totalGames, currentMmr, DOM_FULL_SAMPLE_OVERALL) +
     impactAdjustment(overallImpact) +
     stabilityAdjustment(stability);
 
@@ -253,7 +257,9 @@ function analyzeRole(key: RoleKey, list: EnrichedMatch[], currentMmr: number): R
   let margin: number | null = null;
   if (!insufficientData) {
     const delta =
-      winrateToMmrDelta(weightedWinrate) * meta.difficultyMod +
+      (winrateToMmrDelta(weightedWinrate) +
+        dominationDelta(wins, games, currentMmr, DOM_FULL_SAMPLE_ROLE)) *
+        meta.difficultyMod +
       impactAdjustment(impactScore) +
       stabilityAdjustment(stability);
     potentialMmr = roundMmr(clamp(currentMmr + delta, MMR_MIN, MMR_MAX));

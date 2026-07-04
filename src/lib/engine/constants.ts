@@ -48,6 +48,31 @@ export const MIN_HERO_GAMES = 5;
  */
 export const MAX_HISTORY_DEPTH = 1000;
 
+/**
+ * ---- Domination zone ------------------------------------------------------
+ * Sustained extreme winrates mean the player is whole brackets away from
+ * where they belong: 65% over a long sample at 5000 MMR reads as a
+ * 7500–8000 player, 80% at 1000 MMR as a 6000+ smurf, 25% as someone far
+ * below their bracket. Modeled as a logistic bonus on the RAW winrate of
+ * the whole sample (no recency weighting — it must be *sustained*):
+ *
+ *   dom = K · (σ(WRraw*) − σ(0.5)) · min(1, games/fullSample) · headroom
+ *   σ(x) = 1/(1 + e^−(x − CENTER)/SLOPE),  headroom = 0.7 + 0.3·min(1, MMR/6000)
+ *
+ * WRraw* is shrunk with DOM_SHRINK pseudo-games, so 80% over 20 games
+ * barely registers, while 80% over 200 games unlocks the full bonus.
+ * Symmetric (mirrored) below 50%, with a tighter negative cap.
+ */
+export const DOM_K = 7000;
+export const DOM_CENTER = 0.68;
+export const DOM_SLOPE = 0.055;
+export const DOM_SHRINK = 20;
+export const DOM_MAX_BOOST = 5600;
+export const DOM_MAX_PENALTY = 3500;
+export const DOM_FULL_SAMPLE_OVERALL = 100;
+export const DOM_FULL_SAMPLE_ROLE = 80;
+export const DOM_FULL_SAMPLE_HERO = 40;
+
 /** Matches shorter than this are treated as remakes and dropped. */
 export const MIN_MATCH_DURATION_SEC = 600;
 

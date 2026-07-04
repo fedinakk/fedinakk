@@ -14,9 +14,17 @@ export function generateInsights(ctx: InsightContext): string[] {
   const out: string[] = [];
   const { mmrDelta, potentialMmr, errorMargin } = ctx;
 
-  if (mmrDelta > 100) {
+  if (mmrDelta > 1500) {
+    out.push(
+      `Модель оценивает ваш потолок в ${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR — на ${formatNumber(mmrDelta)} выше текущего. Такой устойчивый винрейт означает, что ваш уровень игры на несколько «голов» выше вашего текущего рейтинга: вы буквально играете не в своей лиге.`,
+    );
+  } else if (mmrDelta > 100) {
     out.push(
       `Модель оценивает ваш потолок в ${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR — это на ${formatNumber(mmrDelta)} выше текущего рейтинга. Ваш винрейт и импакт говорят, что вы играете ниже своего реального уровня.`,
+    );
+  } else if (mmrDelta < -1500) {
+    out.push(
+      `Расчётный потолок — ${formatNumber(potentialMmr)} ± ${formatNumber(errorMargin)} MMR, на ${formatNumber(Math.abs(mmrDelta))} ниже текущего. Устойчиво низкий винрейт говорит, что текущий рейтинг заметно выше вашего сегодняшнего уровня игры.`,
     );
   } else if (mmrDelta < -100) {
     out.push(
